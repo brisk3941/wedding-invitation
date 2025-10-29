@@ -12,38 +12,39 @@ permissions:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
+      # .env 생성 (멀티라인 안전하게)
       - name: Setup Environment Variables
         run: |
-          echo "VITE_NAVER_MAP_CLIENT_ID=$VITE_NAVER_MAP_CLIENT_ID
-          VITE_KAKAO_SDK_JS_KEY=$VITE_KAKAO_SDK_JS_KEY
-          VITE_SERVER_URL=$VITE_SERVER_URL
-          VITE_STATIC_ONLY=$VITE_STATIC_ONLY" >> .env
-        env:
-          VITE_NAVER_MAP_CLIENT_ID: ${{ secrets.VITE_NAVER_MAP_CLIENT_ID }}
-          VITE_KAKAO_SDK_JS_KEY: ${{ secrets.VITE_KAKAO_SDK_JS_KEY }}
-          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
-          VITE_STATIC_ONLY: ${{ vars.VITE_STATIC_ONLY }}
+          cat > .env <<'EOF'
+          VITE_NAVER_MAP_CLIENT_ID=${{ secrets.VITE_NAVER_MAP_CLIENT_ID }}
+          VITE_KAKAO_SDK_JS_KEY=${{ secrets.VITE_KAKAO_SDK_JS_KEY }}
+          VITE_SERVER_URL=${{ vars.VITE_SERVER_URL }}
+          VITE_STATIC_ONLY=${{ vars.VITE_STATIC_ONLY }}
+          EOF
 
       - name: Use Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
+
+      # SPA 새로고침(하위 경로) 404 방지: 404.html = index.html
+      - name: Add SPA fallback
+        run: cp dist/index.html dist/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -51,7 +52,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./build"
+          path: ./dist
 
       - name: Deploy to GitHub Pages
         id: deployment
